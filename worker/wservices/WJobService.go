@@ -7,29 +7,70 @@ import (
 	"gocrontab/common/constants"
 	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
-
+	"gocrontab/worker/gvar"
 )
 
 // 任务管理器
 type JobMgr struct {
-	Client *clientv3.Client
-	Kv clientv3.KV
-	Lease clientv3.Lease
+	Client  *clientv3.Client
+	Kv      clientv3.KV
+	Lease   clientv3.Lease
 	Watcher clientv3.Watcher
+}
+
+var GWJobMgr *JobMgr
+
+// 初始化worker管理器
+func InitWJobMgr() (err error) {
+	var (
+		client  *clientv3.Client
+		kv      clientv3.KV
+		lease   clientv3.Lease
+		watcher clientv3.Watcher
+	)
+
+	// 初始化配置
+	if etcdclient.GClient == nil {
+		if client, err = etcdclient.InitEtcd(); err != nil {
+			return
+		}
+		etcdclient.GClient = client
+	}
+
+	// 得到KV和Lease的API子集
+	kv = clientv3.NewKV(client)
+	lease = clientv3.NewLease(client)
+	watcher = clientv3.NewWatcher(client)
+
+	// 赋值单例
+	GWJobMgr = &JobMgr{
+		Client:  client,
+		Kv:      kv,
+		Lease:   lease,
+		Watcher: watcher,
+	}
+
+	// 启动任务监听
+	GWJobMgr.WatchJobs()
+
+	// 启动监听killer
+	GWJobMgr.WatchKiller()
+
+	return
 }
 
 // 监听任务变化
 func (jobMgr *JobMgr) WatchJobs() (err error) {
 	var (
-		getResp *clientv3.GetResponse
-		kvpair *mvccpb.KeyValue
-		job *tools.Job
+		getResp            *clientv3.GetResponse
+		kvpair             *mvccpb.KeyValue
+		job                *tools.Job
 		watchStartRevision int64
-		watchChan clientv3.WatchChan
-		watchResp clientv3.WatchResponse
-		watchEvent *clientv3.Event
-		jobName string
-		jobEvent *tools.JobEvent
+		watchChan          clientv3.WatchChan
+		watchResp          clientv3.WatchResponse
+		watchEvent         *clientv3.Event
+		jobName            string
+		jobEvent           *tools.JobEvent
 	)
 
 	// 1, get一下/cron/jobs/目录下的所有任务，并且获知当前集群的revision
@@ -43,7 +84,7 @@ func (jobMgr *JobMgr) WatchJobs() (err error) {
 		if job, err = tools.UnpackJob(kvpair.Value); err == nil {
 			jobEvent = tools.BuildJobEvent(constants.JOB_EVENT_SAVE, job)
 			// 同步给scheduler(调度协程)
-			etcdclient.GScheduler.PushJobEvent(jobEvent)
+			gvar.GScheduler.PushJobEvent(jobEvent)
 		}
 	}
 
@@ -73,7 +114,7 @@ func (jobMgr *JobMgr) WatchJobs() (err error) {
 					jobEvent = tools.BuildJobEvent(constants.JOB_EVENT_DELETE, job)
 				}
 				// 变化推给scheduler
-				etcdclient.GScheduler.PushJobEvent(jobEvent)
+				gvar.GScheduler.PushJobEvent(jobEvent)
 			}
 		}
 	}()
@@ -83,12 +124,12 @@ func (jobMgr *JobMgr) WatchJobs() (err error) {
 // 监听强杀任务通知
 func (jobMgr *JobMgr) WatchKiller() {
 	var (
-		watchChan clientv3.WatchChan
-		watchResp clientv3.WatchResponse
+		watchChan  clientv3.WatchChan
+		watchResp  clientv3.WatchResponse
 		watchEvent *clientv3.Event
-		jobEvent *tools.JobEvent
-		jobName string
-		job *tools.Job
+		jobEvent   *tools.JobEvent
+		jobName    string
+		job        *tools.Job
 	)
 	// 监听/cron/killer目录
 	go func() { // 监听协程
@@ -103,7 +144,7 @@ func (jobMgr *JobMgr) WatchKiller() {
 					job = &tools.Job{Name: jobName}
 					jobEvent = tools.BuildJobEvent(constants.JOB_EVENT_KILL, job)
 					// 事件推给scheduler
-					etcdclient.GScheduler.PushJobEvent(jobEvent)
+					gvar.GScheduler.PushJobEvent(jobEvent)
 				case mvccpb.DELETE: // killer标记过期, 被自动删除
 				}
 			}
@@ -111,10 +152,8 @@ func (jobMgr *JobMgr) WatchKiller() {
 	}()
 }
 
-
-
 // 创建任务执行锁
-func (jobMgr *JobMgr) CreateJobLock(jobName string) (jobLock *tools.JobLock){
+func (jobMgr *JobMgr) CreateJobLock(jobName string) (jobLock *tools.JobLock) {
 	jobLock = tools.InitJobLock(jobName, jobMgr.Kv, jobMgr.Lease)
 	return
 }

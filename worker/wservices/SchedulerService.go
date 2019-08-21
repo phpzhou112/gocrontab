@@ -3,31 +3,31 @@ package wservices
 import (
 	"fmt"
 	"gocrontab/common/constants"
-	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
 	"time"
 )
 
 // 任务调度
 type Scheduler struct {
-	jobEventChan chan *tools.JobEvent	//  etcd任务事件队列
-	jobPlanTable map[string]*tools.JobSchedulePlan // 任务调度计划表
-	jobExecutingTable map[string]*tools.JobExecuteInfo // 任务执行表
-	jobResultChan chan *tools.JobExecuteResult	// 任务结果队列
+	jobEventChan      chan *tools.JobEvent              //  etcd任务事件队列
+	jobPlanTable      map[string]*tools.JobSchedulePlan // 任务调度计划表
+	jobExecutingTable map[string]*tools.JobExecuteInfo  // 任务执行表
+	jobResultChan     chan *tools.JobExecuteResult      // 任务结果队列
 }
 
+var GScheduler *Scheduler
 
 // 处理任务事件
 func (scheduler *Scheduler) handleJobEvent(jobEvent *tools.JobEvent) {
 	var (
 		jobSchedulePlan *tools.JobSchedulePlan
-		jobExecuteInfo *tools.JobExecuteInfo
-		jobExecuting bool
-		jobExisted bool
-		err error
+		jobExecuteInfo  *tools.JobExecuteInfo
+		jobExecuting    bool
+		jobExisted      bool
+		err             error
 	)
 	switch jobEvent.EventType {
-	case constants.JOB_EVENT_SAVE:	// 保存任务事件
+	case constants.JOB_EVENT_SAVE: // 保存任务事件
 		if jobSchedulePlan, err = tools.BuildJobSchedulePlan(jobEvent.Job); err != nil {
 			return
 		}
@@ -39,7 +39,7 @@ func (scheduler *Scheduler) handleJobEvent(jobEvent *tools.JobEvent) {
 	case constants.JOB_EVENT_KILL: // 强杀任务事件
 		// 取消掉Command执行, 判断任务是否在执行中
 		if jobExecuteInfo, jobExecuting = scheduler.jobExecutingTable[jobEvent.Job.Name]; jobExecuting {
-			jobExecuteInfo.CancelFunc()	// 触发command杀死shell子进程, 任务得到退出
+			jobExecuteInfo.CancelFunc() // 触发command杀死shell子进程, 任务得到退出
 		}
 	}
 }
@@ -49,7 +49,7 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *tools.JobSchedulePlan) {
 	// 调度 和 执行 是2件事情
 	var (
 		jobExecuteInfo *tools.JobExecuteInfo
-		jobExecuting bool
+		jobExecuting   bool
 	)
 
 	// 执行的任务可能运行很久, 1分钟会调度60次，但是只能执行1次, 防止并发！
@@ -68,14 +68,14 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *tools.JobSchedulePlan) {
 
 	// 执行任务
 	fmt.Println("执行任务:", jobExecuteInfo.Job.Name, jobExecuteInfo.PlanTime, jobExecuteInfo.RealTime)
-	etcdclient.GExecutor.ExecuteJob(jobExecuteInfo)
+	GExecutor.ExecuteJob(jobExecuteInfo)
 }
 
 // 重新计算任务调度状态
 func (scheduler *Scheduler) TrySchedule() (scheduleAfter time.Duration) {
 	var (
-		jobPlan *tools.JobSchedulePlan
-		now time.Time
+		jobPlan  *tools.JobSchedulePlan
+		now      time.Time
 		nearTime *time.Time
 	)
 
@@ -138,10 +138,10 @@ func (scheduler *Scheduler) handleJobResult(result *tools.JobExecuteResult) {
 // 调度协程
 func (scheduler *Scheduler) scheduleLoop() {
 	var (
-		jobEvent *tools.JobEvent
+		jobEvent      *tools.JobEvent
 		scheduleAfter time.Duration
 		scheduleTimer *time.Timer
-		jobResult *tools.JobExecuteResult
+		jobResult     *tools.JobExecuteResult
 	)
 
 	// 初始化一次(1秒)
@@ -153,11 +153,11 @@ func (scheduler *Scheduler) scheduleLoop() {
 	// 定时任务common.Job
 	for {
 		select {
-		case jobEvent = <- scheduler.jobEventChan:	//监听任务变化事件
+		case jobEvent = <-scheduler.jobEventChan: //监听任务变化事件
 			// 对内存中维护的任务列表做增删改查
 			scheduler.handleJobEvent(jobEvent)
-		case <- scheduleTimer.C:	// 最近的任务到期了
-		case jobResult = <- scheduler.jobResultChan: // 监听任务执行结果
+		case <-scheduleTimer.C: // 最近的任务到期了
+		case jobResult = <-scheduler.jobResultChan: // 监听任务执行结果
 			scheduler.handleJobResult(jobResult)
 		}
 		// 调度一次任务
@@ -177,16 +177,15 @@ func (scheduler *Scheduler) PushJobResult(jobResult *tools.JobExecuteResult) {
 	scheduler.jobResultChan <- jobResult
 }
 
-
 // 初始化调度器
 func InitScheduler() (err error) {
-	etcdclient.GScheduler = &Scheduler{
-		jobEventChan: make(chan *tools.JobEvent, 1000),
-		jobPlanTable: make(map[string]*tools.JobSchedulePlan),
+	GScheduler = &Scheduler{
+		jobEventChan:      make(chan *tools.JobEvent, 1000),
+		jobPlanTable:      make(map[string]*tools.JobSchedulePlan),
 		jobExecutingTable: make(map[string]*tools.JobExecuteInfo),
-		jobResultChan: make(chan *tools.JobExecuteResult, 1000),
+		jobResultChan:     make(chan *tools.JobExecuteResult, 1000),
 	}
 	// 启动调度协程
-	go etcdclient.GScheduler.scheduleLoop()
+	go GScheduler.scheduleLoop()
 	return
 }

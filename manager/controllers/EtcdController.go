@@ -5,8 +5,8 @@ import (
 	log "github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
 	"gocrontab/common/constants"
-	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
+	"gocrontab/manager/services"
 	"net/http"
 )
 
@@ -24,7 +24,8 @@ func (this *EtcdController) JobList(c *gin.Context) {
 	)
 
 	// 获取任务列表
-	if jobList, err = etcdclient.GJobMgr.ListJobs(); err != nil {
+
+	if jobList, err = services.GJobMgr.ListJobs(); err != nil {
 		tools.BuildResponse(c, constants.CODE_FAILED, "获取列表失败", "")
 		return
 	}
@@ -55,7 +56,7 @@ func (this *EtcdController) JobAdd(c *gin.Context) {
 		return
 	}
 	// 4, 保存到etcd
-	if oldJob, err = etcdclient.GJobMgr.SaveJob(&job); err != nil {
+	if oldJob, err = services.GJobMgr.SaveJob(&job); err != nil {
 		log.Error("保存到etcd失败", err)
 		return
 	}
@@ -90,7 +91,7 @@ func (this *EtcdController) JobDelete(c *gin.Context) {
 		return
 	}
 	//去删除任务
-	if _, err = etcdclient.GJobMgr.DeleteJob(job.Name); err != nil {
+	if _, err = services.GJobMgr.DeleteJob(job.Name); err != nil {
 		tools.BuildResponse(c, constants.CODE_FAILED, "删除任务失败", "")
 		return
 	}
@@ -120,7 +121,7 @@ func (this *EtcdController) JobKill(c *gin.Context) {
 	}
 
 	// 杀死任务
-	if err = etcdclient.GJobMgr.KillJob(job.Name); err != nil {
+	if err = services.GJobMgr.KillJob(job.Name); err != nil {
 		tools.BuildResponse(c, constants.CODE_FAILED, "杀死任务失败", "")
 		return
 	}
@@ -138,7 +139,7 @@ func (this *EtcdController) WorkerList(c *gin.Context) {
 		err       error
 	)
 
-	if workerArr, err = etcdclient.GWorkerMgr.ListWorkers(); err != nil {
+	if workerArr, err = services.GWorkerMgr.ListWorkers(); err != nil {
 		tools.BuildResponse(c, constants.CODE_FAILED, "获取worker节点失败", "")
 		return
 	}

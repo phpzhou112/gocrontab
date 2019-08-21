@@ -2,7 +2,6 @@ package main
 
 import (
 	log "github.com/alecthomas/log4go"
-	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
 	"gocrontab/worker/wservices"
 	"math"
@@ -26,12 +25,12 @@ func _init() {
 		err error
 	)
 	//启动etcd连接
-	if err = etcdclient.InitRegister(); err != nil {
+	if err = wservices.InitRegister(); err != nil {
 		log.Error("初始化注册失败 ", err)
 		return
 	}
 
-	if err = etcdclient.InitExecutor(); err != nil {
+	if err = wservices.InitExecutor(); err != nil {
 		log.Error("初始化执行器失败 ", err)
 		return
 	}
@@ -42,7 +41,7 @@ func _init() {
 		return
 	}
 	// 初始化任务管理器
-	if err = etcdclient.InitWJobMgr(); err != nil {
+	if err = wservices.InitWJobMgr(); err != nil {
 		log.Error("初始化调度器器失败 ", err)
 		return
 	}

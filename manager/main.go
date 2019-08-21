@@ -2,9 +2,9 @@ package main
 
 import (
 	log "github.com/alecthomas/log4go"
-	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
 	"gocrontab/manager/router"
+	"gocrontab/manager/services"
 	"math"
 	"runtime"
 )
@@ -33,12 +33,13 @@ func _init() {
 		err error
 	)
 	//启动etcd连接
-	if err = etcdclient.InitWorkerMgr(); err != nil {
+
+	if err = services.InitWorkerMgr(); err != nil {
 		log.Error("初始化服务模块失败 ", err)
 		return
 	}
 	//任务管理器
-	if err = etcdclient.InitJobMgr(); err != nil {
+	if err = services.InitJobMgr(); err != nil {
 		log.Error("初始化任务管理器失败 ", err)
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"gocrontab/common/constants"
+	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
 )
 
@@ -14,6 +15,34 @@ type WorkerMgr struct {
 	Client *clientv3.Client
 	Kv     clientv3.KV
 	Lease  clientv3.Lease
+}
+
+var GWorkerMgr *WorkerMgr
+
+//初始化连接
+func InitWorkerMgr() (err error) {
+	var (
+		client *clientv3.Client
+		kv     clientv3.KV
+		lease  clientv3.Lease
+	)
+	if etcdclient.GClient == nil {
+		if client, err = etcdclient.InitEtcd(); err != nil {
+			return
+		}
+		etcdclient.GClient = client
+	}
+
+	// 得到KV和Lease的API子集
+	kv = clientv3.NewKV(client)
+	lease = clientv3.NewLease(client)
+
+	GWorkerMgr = &WorkerMgr{
+		Client: client,
+		Kv:     kv,
+		Lease:  lease,
+	}
+	return
 }
 
 // 获取在线worker列表

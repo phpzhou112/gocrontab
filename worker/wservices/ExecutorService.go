@@ -1,39 +1,44 @@
 package wservices
 
 import (
-	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
+	"gocrontab/worker/gvar"
 	"math/rand"
 	"os/exec"
 	"time"
 )
 
-
 // 任务执行器
 type Executor struct {
-
 }
 
+var GExecutor *Executor
+
+//  初始化执行器
+func InitExecutor() (err error) {
+	GExecutor = &Executor{}
+	return
+}
 
 // 执行一个任务
 func (executor *Executor) ExecuteJob(info *tools.JobExecuteInfo) {
 	go func() {
 		var (
-			cmd *exec.Cmd
-			err error
-			output []byte
-			result *tools.JobExecuteResult
+			cmd     *exec.Cmd
+			err     error
+			output  []byte
+			result  *tools.JobExecuteResult
 			jobLock *tools.JobLock
 		)
 
 		// 任务结果
 		result = &tools.JobExecuteResult{
 			ExecuteInfo: info,
-			Output: make([]byte, 0),
+			Output:      make([]byte, 0),
 		}
 
 		// 初始化分布式锁
-		jobLock = etcdclient.GWJobMgr.CreateJobLock(info.Job.Name)
+		jobLock = GWJobMgr.CreateJobLock(info.Job.Name)
 
 		// 记录任务开始时间
 		result.StartTime = time.Now()
@@ -64,8 +69,6 @@ func (executor *Executor) ExecuteJob(info *tools.JobExecuteInfo) {
 			result.Err = err
 		}
 		// 任务执行完成后，把执行的结果返回给Scheduler，Scheduler会从executingTable中删除掉执行记录
-		etcdclient.GScheduler.PushJobResult(result)
+		gvar.GScheduler.PushJobResult(result)
 	}()
 }
-
-
