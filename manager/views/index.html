@@ -147,6 +147,7 @@
     <script>
         // 页面加载完成后, 回调函数
         $(document).ready(function() {
+            rebuildJobList();
             // 时间格式化函数
             function timeFormat(millsecond) {
                 // 前缀补0: 2018-08-07 08:01:03.345
@@ -237,6 +238,7 @@
 
                 // 请求/job/log接口
                 $.ajax({
+                    method"post",
                     url: "/job/log",
                     dataType: 'json',
                     data: {data:{name: jobName}},
@@ -273,6 +275,7 @@
 
                 // 拉取节点
                 $.ajax({
+                    method:'post',
                     url: '/worker/list',
                     dataType: 'json',
                     success: function(resp) {
@@ -299,6 +302,7 @@
             function rebuildJobList() {
                 // /job/list
                 $.ajax({
+                    method:'post',
                     url: '/job/list',
                     dataType: 'json',
                     success: function(resp) {
@@ -306,6 +310,7 @@
                             alert(resp);
                             return
                         }
+                        console.log(resp);
                         // 任务数组
                         var jobList = resp.data
                         // 清理列表
@@ -328,7 +333,7 @@
                     }
                 })
             }
-            rebuildJobList()
+
         })
     </script>
 

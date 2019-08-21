@@ -29,7 +29,7 @@ func (this *EtcdController) JobList(c *gin.Context) {
 		tools.BuildResponse(c, constants.CODE_FAILED, "获取列表失败", "")
 		return
 	}
-
+	log.Info("获取任务:", jobList)
 	//成功返回
 	tools.BuildResponse(c, constants.CODE_SUCCESS, constants.MESSAGE_SUCCESS, jobList)
 	return

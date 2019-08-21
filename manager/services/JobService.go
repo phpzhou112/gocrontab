@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/alecthomas/log4go"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"gocrontab/common/constants"
@@ -61,6 +62,7 @@ func (jobMgr *JobMgr) SaveJob(job *tools.Job) (oldJob *tools.Job, err error) {
 	}
 	// 保存到etcd
 	if putResp, err = jobMgr.Kv.Put(context.TODO(), jobKey, string(jobValue), clientv3.WithPrevKV()); err != nil {
+		log4go.Error("保存到etct失败", err)
 		return
 	}
 	// 如果是更新, 那么返回旧值

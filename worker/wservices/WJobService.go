@@ -7,7 +7,6 @@ import (
 	"gocrontab/common/constants"
 	"gocrontab/common/etcdclient"
 	"gocrontab/common/tools"
-	"gocrontab/worker/gvar"
 )
 
 // 任务管理器
@@ -38,13 +37,13 @@ func InitWJobMgr() (err error) {
 	}
 
 	// 得到KV和Lease的API子集
-	kv = clientv3.NewKV(client)
-	lease = clientv3.NewLease(client)
-	watcher = clientv3.NewWatcher(client)
+	kv = clientv3.NewKV(etcdclient.GClient)
+	lease = clientv3.NewLease(etcdclient.GClient)
+	watcher = clientv3.NewWatcher(etcdclient.GClient)
 
 	// 赋值单例
 	GWJobMgr = &JobMgr{
-		Client:  client,
+		Client:  etcdclient.GClient,
 		Kv:      kv,
 		Lease:   lease,
 		Watcher: watcher,
@@ -84,7 +83,7 @@ func (jobMgr *JobMgr) WatchJobs() (err error) {
 		if job, err = tools.UnpackJob(kvpair.Value); err == nil {
 			jobEvent = tools.BuildJobEvent(constants.JOB_EVENT_SAVE, job)
 			// 同步给scheduler(调度协程)
-			gvar.GScheduler.PushJobEvent(jobEvent)
+			GScheduler.PushJobEvent(jobEvent)
 		}
 	}
 
@@ -114,7 +113,7 @@ func (jobMgr *JobMgr) WatchJobs() (err error) {
 					jobEvent = tools.BuildJobEvent(constants.JOB_EVENT_DELETE, job)
 				}
 				// 变化推给scheduler
-				gvar.GScheduler.PushJobEvent(jobEvent)
+				GScheduler.PushJobEvent(jobEvent)
 			}
 		}
 	}()
@@ -144,7 +143,7 @@ func (jobMgr *JobMgr) WatchKiller() {
 					job = &tools.Job{Name: jobName}
 					jobEvent = tools.BuildJobEvent(constants.JOB_EVENT_KILL, job)
 					// 事件推给scheduler
-					gvar.GScheduler.PushJobEvent(jobEvent)
+					GScheduler.PushJobEvent(jobEvent)
 				case mvccpb.DELETE: // killer标记过期, 被自动删除
 				}
 			}

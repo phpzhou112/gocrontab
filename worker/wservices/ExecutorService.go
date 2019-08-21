@@ -2,7 +2,6 @@ package wservices
 
 import (
 	"gocrontab/common/tools"
-	"gocrontab/worker/gvar"
 	"math/rand"
 	"os/exec"
 	"time"
@@ -69,6 +68,6 @@ func (executor *Executor) ExecuteJob(info *tools.JobExecuteInfo) {
 			result.Err = err
 		}
 		// 任务执行完成后，把执行的结果返回给Scheduler，Scheduler会从executingTable中删除掉执行记录
-		gvar.GScheduler.PushJobResult(result)
+		GScheduler.PushJobResult(result)
 	}()
 }
