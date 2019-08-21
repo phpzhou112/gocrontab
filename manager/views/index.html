@@ -238,7 +238,7 @@
 
                 // 请求/job/log接口
                 $.ajax({
-                    method"post",
+                    type:"post",
                     url: "/job/log",
                     dataType: 'json',
                     data: {data:{name: jobName}},
@@ -302,7 +302,7 @@
             function rebuildJobList() {
                 // /job/list
                 $.ajax({
-                    method:'post',
+                    type:'post',
                     url: '/job/list',
                     dataType: 'json',
                     success: function(resp) {
