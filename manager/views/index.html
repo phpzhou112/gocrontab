@@ -184,25 +184,32 @@
             })
             // 删除任务
             $("#job-list").on("click", ".delete-job", function(event) { // javascript bind
-                var jobName = $(this).parents("tr").children(".job-name").text()
+                var jobName = $(this).parents("tr").children(".job-name").text();
+                var jsonObj = {name:jobName};
                 $.ajax({
                     url: '/job/delete',
                     type: 'post',
                     dataType: 'json',
-                    data: {data:{name: jobName}},
-                    complete: function() {
-                        window.location.reload()
+                    data: {data:JSON.stringify(jsonObj)},
+                    // complete: function() {
+                    //     window.location.reload()
+                    // },
+                    success:function (resp) {
+                        if (resp.code == 0){
+                            window.location.reload()
+                        }
                     }
                 })
             })
             // 杀死任务
             $("#job-list").on("click", ".kill-job", function(event) {
-                var jobName = $(this).parents("tr").children(".job-name").text()
+                var jobName = $(this).parents("tr").children(".job-name").text();
+                var jsonObj = {name: jobName};
                 $.ajax({
                     url: '/job/kill',
                     type: 'post',
                     dataType: 'json',
-                    data: {data:{name: jobName}},
+                    data: {data:JSON.stringify(jsonObj)},
                     complete: function() {
                         window.location.reload()
                     }
@@ -235,13 +242,13 @@
 
                 // 获取任务名
                 var jobName = $(this).parents('tr').children('.job-name').text()
-
+                var jobJson = {name:jobName};
                 // 请求/job/log接口
                 $.ajax({
                     type:"post",
                     url: "/job/log",
                     dataType: 'json',
-                    data: {data:{name: jobName}},
+                    data: {data:JSON.stringify(jobJson)},
                     success: function(resp) {
                         if (resp.code != 0) {
                             return
@@ -310,7 +317,6 @@
                             alert(resp);
                             return
                         }
-                        console.log(resp);
                         // 任务数组
                         var jobList = resp.data
                         // 清理列表
